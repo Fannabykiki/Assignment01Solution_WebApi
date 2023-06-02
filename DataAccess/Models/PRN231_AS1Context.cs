@@ -22,11 +22,11 @@ namespace DataAccess.Models
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            var conf = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-            if (!optionsBuilder.IsConfigured)
-            {
-                optionsBuilder.UseSqlServer(conf.GetConnectionString("DbConnection"));
-            }
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+            IConfigurationRoot configuration = builder.Build();
+            optionsBuilder.UseSqlServer(configuration.GetConnectionString("DbConnection"));
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

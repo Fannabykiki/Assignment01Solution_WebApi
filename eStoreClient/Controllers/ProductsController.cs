@@ -11,13 +11,15 @@ namespace eStoreClient.Controllers
     public class ProductsController : Controller
     {
         private readonly HttpClient _client = null;
+        private readonly PRN231_AS1Context _context;
         private string ProductData = "";
 
         [BindProperty]
         public Product Products { get; set; }
 
-        public ProductsController()
+        public ProductsController(PRN231_AS1Context context)
         {
+            _context = context;
             _client = new HttpClient();
             var contentType = new MediaTypeWithQualityHeaderValue("application/json");
             _client.DefaultRequestHeaders.Accept.Add(contentType);
@@ -43,119 +45,83 @@ namespace eStoreClient.Controllers
         // GET: Products/Details/5
         //public async Task<IActionResult> Details(int? id)
         //{
-           
-        //}
+        public IActionResult Create()
+        {
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryName");
+            return View();
+        }
 
-        //// GET: Products/Create
-        ////public IActionResult Create()
-        ////{
-            
-        ////}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("CategoryId,ProductName,Weight,UnitPrice,UnitsInStock")] Product product)
+        {
+            using (var respone = await _client.PostAsJsonAsync(ProductData, product))
+            {
+                string apiResponse = await respone.Content.ReadAsStringAsync();
+            }
+            return RedirectToAction("Index");
+        }
 
-        //// POST: Products/Create
-        //// To protect from overposting attacks, enable the specific properties you want to bind to.
-        //// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Create([Bind("ProductId,CategoryId,ProductName,Weight,UnitPrice,UnitsInStock")] Product product)
-        //{
-          
-        //}
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null || _context.Products == null)
+            {
+                return NotFound();
+            }
 
-        // GET: Products/Edit/5
-        //public async Task<IActionResult> Edit(int? id)
-        //{
-        //    if (id == null || _context.Products == null)
-        //    {
-        //        return NotFound();
-        //    }
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryName", product.CategoryId);
+            return View(product);
+        }
 
-        //    var product = await _context.Products.FindAsync(id);
-        //    if (product == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId", product.CategoryId);
-        //    return View(product);
-        //}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("CategoryId,ProductName,Weight,UnitPrice,UnitsInStock")] Product product)
+        {
+            using (var respone = await _client.PutAsJsonAsync(ProductData +"/" + id, product))
+            {
+                string apiResponse = await respone.Content.ReadAsStringAsync();
+            }
+            return RedirectToAction("Index");
+        }
 
-        // POST: Products/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Edit(int id, [Bind("ProductId,CategoryId,ProductName,Weight,UnitPrice,UnitsInStock")] Product product)
-        //{
-        //    if (id != product.ProductId)
-        //    {
-        //        return NotFound();
-        //    }
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null || _context.Products == null)
+            {
+                return NotFound();
+            }
 
-        //    if (ModelState.IsValid)
-        //    {
-        //        try
-        //        {
-        //            _context.Update(product);
-        //            await _context.SaveChangesAsync();
-        //        }
-        //        catch (DbUpdateConcurrencyException)
-        //        {
-        //            if (!ProductExists(product.ProductId))
-        //            {
-        //                return NotFound();
-        //            }
-        //            else
-        //            {
-        //                throw;
-        //            }
-        //        }
-        //        return RedirectToAction(nameof(Index));
-        //    }
-        //    ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId", product.CategoryId);
-        //    return View(product);
-        //}
+            var product = await _context.Products
+                .Include(p => p.Category)
+                .FirstOrDefaultAsync(m => m.ProductId == id);
+            if (product == null)
+            {
+                return NotFound();
+            }
 
-        // GET: Products/Delete/5
-        //public async Task<IActionResult> Delete(int? id)
-        //{
-        //    if (id == null || _context.Products == null)
-        //    {
-        //        return NotFound();
-        //    }
+            return View(product);
+        }
 
-        //    var product = await _context.Products
-        //        .Include(p => p.Category)
-        //        .FirstOrDefaultAsync(m => m.ProductId == id);
-        //    if (product == null)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    return View(product);
-        //}
-
-        // POST: Products/Delete/5
-        //[HttpPost, ActionName("Delete")]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> DeleteConfirmed(int id)
-        //{
-        //    if (_context.Products == null)
-        //    {
-        //        return Problem("Entity set 'PRN231_AS1Context.Products'  is null.");
-        //    }
-        //    var product = await _context.Products.FindAsync(id);
-        //    if (product != null)
-        //    {
-        //        _context.Products.Remove(product);
-        //    }
-            
-        //    await _context.SaveChangesAsync();
-        //    return RedirectToAction(nameof(Index));
-        //}
-
-        //private bool ProductExists(int id)
-        //{
-        //  return (_context.Products?.Any(e => e.ProductId == id)).GetValueOrDefault();
-        //}
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var productId = _context.Products.Find(id);
+            if (productId != null)
+            {
+                String url = ProductData + "/" + id;
+                await _client.DeleteAsync(url);
+                return RedirectToAction("Index");
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
     }
 }
